@@ -51,6 +51,8 @@ def write_report(
         json.dumps(backtest_metrics, indent=2),
         "```",
         "",
+        "Set `research.run_backtest: true` in the config to generate full portfolio diagnostics.",
+        "",
         "## Honest interpretation guardrails",
         "",
         "- Treat these outputs as diagnostics, not proof of tradable alpha.",

@@ -141,15 +141,21 @@ class ResearchWorkflow:
         else:
             decay = pd.DataFrame()
 
-        returns, bt_metrics = backtest_long_short(
-            best_score,
-            ohlcv,
-            long_q=cfg["research"].get("long_quantile", 0.8),
-            short_q=cfg["research"].get("short_quantile", 0.2),
-            cost_bps=cfg["research"].get("transaction_cost_bps", 5),
-        )
-        bt_metrics["selected_model"] = selected_model_name
-        returns.to_csv(self.outputs / "long_short_returns.csv")
+        if cfg["research"].get("run_backtest", False):
+            returns, bt_metrics = backtest_long_short(
+                best_score,
+                ohlcv,
+                long_q=cfg["research"].get("long_quantile", 0.8),
+                short_q=cfg["research"].get("short_quantile", 0.2),
+                cost_bps=cfg["research"].get("transaction_cost_bps", 5),
+            )
+            bt_metrics["selected_model"] = selected_model_name
+            returns.to_csv(self.outputs / "long_short_returns.csv")
+        else:
+            bt_metrics = {
+                "selected_model": selected_model_name,
+                "note": "Backtest disabled for quick demo run. Set research.run_backtest: true to enable portfolio diagnostics.",
+            }
 
         summary_payload = {
             "data_quality": dq,

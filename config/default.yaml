@@ -13,6 +13,7 @@ research:
   transaction_cost_bps: 5
   random_seed: 42
   run_signal_decay: false
+  run_backtest: false
 model:
   include_pytorch: false
   pytorch_epochs: 1
