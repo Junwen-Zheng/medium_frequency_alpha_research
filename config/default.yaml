@@ -1,0 +1,22 @@
+universe:
+  tickers: [AAPL, MSFT, NVDA, AMZN, META, GOOGL, TSLA, JPM, XOM, UNH, AVGO, COST, HD, MA, V]
+  start: "2018-01-01"
+  end: "2025-12-31"
+research:
+  horizon_days: 10
+  train_start: "2018-01-01"
+  validation_start: "2022-01-01"
+  test_start: "2024-01-01"
+  rebalance_frequency: "W-FRI"
+  long_quantile: 0.80
+  short_quantile: 0.20
+  transaction_cost_bps: 5
+  random_seed: 42
+model:
+  pytorch_epochs: 3
+  hidden_dim: 32
+  learning_rate: 0.001
+  weight_decay: 0.0001
+report:
+  title: "Medium-Frequency Equity Signal Research"
+  author: "Junwen Zheng"
