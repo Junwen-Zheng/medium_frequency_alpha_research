@@ -2,16 +2,25 @@ from __future__ import annotations
 
 import numpy as np
 import pandas as pd
-from scipy.stats import spearmanr
 
 
 def daily_rank_ic(scores: pd.Series, target: pd.Series) -> pd.Series:
+    """Compute daily Spearman rank correlation without scipy overhead.
+
+    The calculation ranks score and target cross-sectionally each day and then
+    computes Pearson correlation between the two rank vectors. This is equivalent
+    to Spearman correlation and is stable for repeated diagnostic calls.
+    """
     df = pd.concat([scores.rename("score"), target.rename("target")], axis=1).dropna()
     vals = {}
     for date, grp in df.groupby(level="date"):
         if grp["score"].nunique() < 3 or grp["target"].nunique() < 3:
             continue
-        vals[date] = spearmanr(grp["score"], grp["target"]).correlation
+        score_rank = grp["score"].rank(method="average")
+        target_rank = grp["target"].rank(method="average")
+        corr = score_rank.corr(target_rank)
+        if np.isfinite(corr):
+            vals[date] = corr
     return pd.Series(vals).sort_index().rename("rank_ic")
 
 
