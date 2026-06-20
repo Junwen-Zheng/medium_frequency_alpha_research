@@ -5,11 +5,21 @@ import json
 import pandas as pd
 
 
-def write_report(path: str | Path, title: str, data_quality: dict, model_summaries: dict, backtest_metrics: dict, decay_table: pd.DataFrame) -> None:
+def write_report(
+    path: str | Path,
+    title: str,
+    data_quality: dict,
+    validation_summaries: dict,
+    test_summaries: dict,
+    backtest_metrics: dict,
+    decay_table: pd.DataFrame,
+) -> None:
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
     lines = [
-        f"# {title}",
+        f"# {title}: Generated Diagnostics",
+        "",
+        "This generated report is a diagnostic output from the reproducible pipeline. The main case-study interpretation lives in `reports/research_report.md`.",
         "",
         "## Data quality",
         "",
@@ -17,10 +27,18 @@ def write_report(path: str | Path, title: str, data_quality: dict, model_summari
         json.dumps(data_quality, indent=2),
         "```",
         "",
-        "## Model validation summary",
+        "## Validation model comparison",
+        "",
+        "Models are selected on the validation slice before final test diagnostics.",
         "",
         "```json",
-        json.dumps(model_summaries, indent=2),
+        json.dumps(validation_summaries, indent=2),
+        "```",
+        "",
+        "## Test diagnostics",
+        "",
+        "```json",
+        json.dumps(test_summaries, indent=2),
         "```",
         "",
         "## Signal decay",
@@ -33,10 +51,11 @@ def write_report(path: str | Path, title: str, data_quality: dict, model_summari
         json.dumps(backtest_metrics, indent=2),
         "```",
         "",
-        "## Honest notes",
+        "## Honest interpretation guardrails",
         "",
         "- Treat these outputs as diagnostics, not proof of tradable alpha.",
         "- Public OHLCV-only data is intentionally limited; stronger research needs additional event, fundamental, and alternative data.",
         "- Good-looking results must be stress-tested for leakage, turnover, cost assumptions, universe choice, and regime dependence.",
+        "- The research process matters more than any single score in this toy-sized universe.",
     ]
     path.write_text("\n".join(lines), encoding="utf-8")
