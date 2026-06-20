@@ -1,0 +1,9 @@
+experiment_id,question,model_or_signal,expected_behavior,observed_issue_or_decision,status
+E001,Does 5-day reversal contain medium-horizon rank information?,reversal_5d,Mean-reversion after short-term underperformance,Keep as interpretable feature but not standalone alpha,kept
+E002,Does 20-day momentum persist?,momentum_20d,Continuation from delayed information diffusion,Useful diagnostic feature; needs broader universe for confidence,kept
+E003,Does 60-day momentum add separate information?,momentum_60d,Longer trend persistence,Potential collinearity with 20-day momentum; leave for model comparison,kept
+E004,Can raw 1-day return stand alone?,ret_1d_lag1,Very short-horizon reversal or continuation,Too noisy; keep only as model input,failed
+E005,Does unusual volume improve ranking?,volume_z_20d / dollar_volume_z_20d,Attention or information arrival proxy,Insufficient alone without event/news context,kept_as_diagnostic
+E006,Does random forest add nonlinear interaction value?,random_forest,Interactions among momentum/reversal/volatility,Compare with ridge on validation before trusting,under_test
+E007,Does PyTorch MLP materially improve ranking?,pytorch_mlp,Flexible nonlinear ranking,Not central; risk of overfitting small OHLCV universe,under_test
+E008,Does signal decay behave consistently?,rank_ic by horizon,Shorter horizons may decay faster,Needs inspection across 1/5/10/20 day horizons,under_test
