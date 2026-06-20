@@ -15,8 +15,8 @@ This is a deliberately limited question. The project does **not** claim to find 
 - Point-in-time feature construction with explicit lagging rules.
 - Medium-frequency cross-sectional targets over a configurable 5–20 day horizon.
 - Baseline and ML models: ridge regression, random forest, and a small PyTorch MLP ranker.
-- IC / rank-IC validation, signal decay checks, and market-neutral long/short backtest diagnostics.
-- Documentation of failed experiments and research decisions, not only final code.
+- IC / rank-IC validation, signal decay checks, market-neutral long/short backtest diagnostics, and regime-sliced stability analysis.
+- Documentation of failed experiments, second-hypothesis implementation, and research decisions, not only final code.
 - Reproducible experiment pipeline that generates model outputs, backtest metrics, and Markdown reports.
 
 ## What changed from the first version
@@ -36,7 +36,8 @@ config/default.yaml                   Experiment configuration
 src/data.py                           Data download / synthetic fallback / data quality checks
 src/features.py                       Point-in-time feature construction and target definition
 src/models.py                         Ridge, random forest, and PyTorch MLP ranker
-src/evaluation.py                     Rank-IC, IC summary, signal decay diagnostics
+src/evaluation.py                     Rank-IC, IC summary, signal decay, hypothesis and regime diagnostics
+src/regime.py                         Ex-ante market-regime classification for stability checks
 src/backtest.py                       Market-neutral long/short backtest with cost assumptions
 src/workflow.py                       Reproducible research pipeline runner
 src/reporting.py                      Markdown report generation
@@ -69,7 +70,17 @@ The real-data mode downloads public OHLCV data using `yfinance`. This is not a s
 
 ## Current conclusion
 
-The project currently supports a cautious conclusion: simple price/volume features can sometimes produce interesting cross-sectional diagnostics, but the evidence is not strong enough to claim durable tradable alpha. The most useful signal candidates are simple and interpretable; the more flexible model stack needs more data, stronger features, and broader universe coverage before it would be credible.
+The project currently supports a cautious conclusion: simple price/volume and volatility-adjusted features can produce useful diagnostics, but the evidence is not strong enough to claim durable tradable alpha. The latest version implements a second hypothesis family and adds regime-sliced rank-IC checks, which improves the research process but still leaves the core limitation unchanged: stronger evidence would require broader data, richer features, and deeper out-of-sample testing.
+
+
+## Implemented second hypothesis
+
+After reviewer feedback, I added a second hypothesis family rather than only documenting it. The new features test whether volatility-adjusted momentum/reversal is more stable than raw return features. The workflow now generates:
+
+- `outputs/hypothesis_family_comparison.csv` - raw price/volume vs volatility-adjusted hypothesis-family diagnostics.
+- `outputs/regime_sliced_rank_ic.csv` - selected-model rank IC by simple ex-ante market regime.
+
+This is intentionally not presented as proof of alpha. It is meant to demonstrate research iteration: hypothesis, implementation, comparison, regime analysis, and honest interpretation.
 
 ## Suggested resume wording
 

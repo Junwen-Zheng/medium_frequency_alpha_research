@@ -5,6 +5,10 @@ import json
 import pandas as pd
 
 
+def _markdown_table_or_note(df: pd.DataFrame, note: str) -> str:
+    return df.to_markdown() if df is not None and not df.empty else note
+
+
 def write_report(
     path: str | Path,
     title: str,
@@ -13,6 +17,8 @@ def write_report(
     test_summaries: dict,
     backtest_metrics: dict,
     decay_table: pd.DataFrame,
+    family_comparison: pd.DataFrame | None = None,
+    regime_ic: pd.DataFrame | None = None,
 ) -> None:
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -40,6 +46,18 @@ def write_report(
         "```json",
         json.dumps(test_summaries, indent=2),
         "```",
+        "",
+        "## Hypothesis-family comparison",
+        "",
+        "This table compares transparent composite scores for the original raw price/volume family versus the implemented volatility-adjusted follow-up hypothesis. It is meant to test whether a feature idea deserves further research before relying on a more flexible model.",
+        "",
+        _markdown_table_or_note(family_comparison, "Hypothesis-family comparison was not generated."),
+        "",
+        "## Regime-sliced rank IC",
+        "",
+        "This table checks whether the selected model's cross-sectional ranking quality is concentrated in specific market regimes. Concentrated performance should be treated as weaker evidence than broad stability.",
+        "",
+        _markdown_table_or_note(regime_ic, "Regime-sliced rank IC was not generated."),
         "",
         "## Signal decay",
         "",

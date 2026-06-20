@@ -154,3 +154,22 @@ The strongest honest conclusion is:
 > This project does not prove tradable alpha, but it demonstrates a research process: forming hypotheses, constructing leakage-controlled features, comparing models, documenting failures, and evaluating signals through rank-IC, decay, and cost-aware portfolio diagnostics.
 
 That is the level of claim the current evidence supports.
+
+## Implemented Follow-up Hypothesis: Volatility-adjusted Price Action
+
+After reviewer feedback, I added a concrete second hypothesis family rather than leaving the project as a single fixed pipeline. The follow-up hypothesis asks whether volatility-adjusted reversal and momentum features are more stable than raw return features.
+
+The implemented features are:
+
+- `reversal_5d_vol_adj`
+- `momentum_20d_vol_adj`
+- `momentum_60d_vol_adj`
+- `liquidity_adjusted_momentum`
+
+The workflow now produces `outputs/hypothesis_family_comparison.csv`, comparing the original raw price/volume family against the volatility-adjusted family using rank-IC diagnostics. This is not intended to prove alpha; it is intended to show a research loop from hypothesis to implementation to diagnostic comparison.
+
+## Regime Stability Analysis
+
+The project now also creates simple ex-ante market-regime labels using equal-weight market returns, rolling trend, and rolling realized volatility. The workflow writes `outputs/regime_sliced_rank_ic.csv` to check whether model performance is concentrated in one market environment.
+
+This matters because a signal that only appears in one favorable regime is weaker evidence than a signal with broad stability. The regime split is intentionally simple and should be interpreted as a diagnostic, not a complete institutional regime model.

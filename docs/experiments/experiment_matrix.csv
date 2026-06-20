@@ -7,3 +7,5 @@ E005,Does unusual volume improve ranking?,volume_z_20d / dollar_volume_z_20d,Att
 E006,Does random forest add nonlinear interaction value?,random_forest,Interactions among momentum/reversal/volatility,Compare with ridge on validation before trusting,under_test
 E007,Does PyTorch MLP materially improve ranking?,pytorch_mlp,Flexible nonlinear ranking,Not central; risk of overfitting small OHLCV universe,under_test
 E008,Does signal decay behave consistently?,rank_ic by horizon,Shorter horizons may decay faster,Needs inspection across 1/5/10/20 day horizons,under_test
+vol_adjusted_momentum_reversal,volatility-adjusted momentum/reversal may improve stability over raw returns,implemented,compare rank IC and IR against raw price/volume family plus regime slices,not enough evidence alone; useful as second hypothesis and research-process evidence
+regime_sliced_ic,selected model should not work only in one favorable market regime,implemented,join date-level ex-ante regime labels to test scores and compute rank IC by regime,diagnostic only; short sample and simple regime labels limit confidence

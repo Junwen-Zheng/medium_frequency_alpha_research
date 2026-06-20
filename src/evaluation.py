@@ -55,3 +55,45 @@ def signal_decay(feature_frame: pd.DataFrame, score: pd.Series, ohlcv: pd.DataFr
         summary["horizon"] = h
         rows.append(summary)
     return pd.DataFrame(rows).set_index("horizon")
+
+
+def compare_feature_families(feature_frame: pd.DataFrame, target: pd.Series, family_scores: dict[str, pd.Series]) -> pd.DataFrame:
+    """Compare transparent hypothesis-family scores using rank-IC diagnostics."""
+    rows = []
+    for name, score in family_scores.items():
+        score = score.reindex(target.index).dropna()
+        aligned_target = target.reindex(score.index)
+        ric = daily_rank_ic(score, aligned_target)
+        summary = summarize_ic(ric)
+        summary["family"] = name
+        rows.append(summary)
+    if not rows:
+        return pd.DataFrame(columns=["family", "mean_rank_ic", "ir", "positive_days", "n_days"])
+    return pd.DataFrame(rows).set_index("family")
+
+
+def regime_sliced_rank_ic(scores: pd.Series, target: pd.Series, regimes: pd.Series) -> pd.DataFrame:
+    """Evaluate rank IC by market regime.
+
+    This helps identify whether a signal is broadly stable or only works in one
+    favorable regime. Regime labels are date-level and joined onto the scored
+    cross-section by date.
+    """
+    rows = []
+    df = pd.concat([scores.rename("score"), target.rename("target")], axis=1).dropna()
+    if df.empty:
+        return pd.DataFrame(columns=["regime", "mean_rank_ic", "ir", "positive_days", "n_days"])
+    date_index = df.index.get_level_values("date")
+    df = df.copy()
+    df["regime"] = regimes.reindex(date_index).to_numpy()
+    for regime, grp in df.groupby("regime"):
+        if regime == "unclassified" or grp.empty:
+            continue
+        grp_indexed = grp.drop(columns=["regime"])
+        ric = daily_rank_ic(grp_indexed["score"], grp_indexed["target"])
+        summary = summarize_ic(ric)
+        summary["regime"] = regime
+        rows.append(summary)
+    if not rows:
+        return pd.DataFrame(columns=["regime", "mean_rank_ic", "ir", "positive_days", "n_days"])
+    return pd.DataFrame(rows).set_index("regime").sort_index()

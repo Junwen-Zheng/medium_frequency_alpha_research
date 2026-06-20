@@ -8,9 +8,10 @@ import pandas as pd
 import yaml
 
 from .data import download_ohlcv, make_synthetic_ohlcv, quality_report
-from .features import build_features, feature_columns
+from .regime import market_regime_labels
+from .features import build_features, feature_columns, feature_family_columns, composite_family_score
 from .models import fit_ridge, fit_random_forest, fit_pytorch_mlp
-from .evaluation import daily_rank_ic, summarize_ic, signal_decay
+from .evaluation import daily_rank_ic, summarize_ic, signal_decay, compare_feature_families, regime_sliced_rank_ic
 from .backtest import backtest_long_short
 from .reporting import write_report
 
@@ -133,6 +134,20 @@ class ResearchWorkflow:
         if best_score is None:
             raise RuntimeError("Selected model was not found in test model stack.")
 
+        # Transparent hypothesis-family comparison. This is deliberately separate
+        # from the model stack so the repo shows a research question being tested,
+        # not only a black-box prediction pipeline.
+        family_scores = {
+            name: composite_family_score(test, cols)
+            for name, cols in feature_family_columns().items()
+        }
+        family_comparison = compare_feature_families(test, test[target], family_scores)
+        family_comparison.to_csv(self.outputs / "hypothesis_family_comparison.csv")
+
+        regimes = market_regime_labels(ohlcv)
+        regime_ic = regime_sliced_rank_ic(best_score, test[target], regimes)
+        regime_ic.to_csv(self.outputs / "regime_sliced_rank_ic.csv")
+
         # Signal-decay diagnostics are part of the full research workflow, but
         # they can be toggled off for a fast public demo run.
         if cfg["research"].get("run_signal_decay", False):
@@ -161,6 +176,8 @@ class ResearchWorkflow:
             "data_quality": dq,
             "validation": validation_summaries,
             "test": model_summaries,
+            "hypothesis_family_comparison": family_comparison.to_dict(),
+            "regime_sliced_rank_ic": regime_ic.to_dict(),
             "backtest": bt_metrics,
         }
         (self.outputs / "workflow_summary.json").write_text(json.dumps(summary_payload, indent=2))
@@ -174,5 +191,7 @@ class ResearchWorkflow:
             model_summaries,
             bt_metrics,
             decay,
+            family_comparison,
+            regime_ic,
         )
         return WorkflowResult(model_summaries, bt_metrics, str(report_path))

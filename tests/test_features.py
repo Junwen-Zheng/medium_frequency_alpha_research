@@ -29,3 +29,12 @@ def test_target_is_cross_sectionally_centered():
     frame = build_features(df, horizon_days=10)
     daily_mean = frame["target_rel_fwd_10d"].groupby(level="date").mean()
     assert daily_mean.abs().max() < 1e-10
+
+
+def test_volatility_adjusted_feature_family_exists():
+    df = make_synthetic_ohlcv(["AAA", "BBB", "CCC", "DDD", "EEE", "FFF"], "2020-01-01", "2021-06-30")
+    frame = build_features(df, horizon_days=10)
+    assert "reversal_5d_vol_adj" in frame.columns
+    assert "momentum_20d_vol_adj" in frame.columns
+    assert "liquidity_adjusted_momentum" in frame.columns
+    assert frame[["reversal_5d_vol_adj", "momentum_20d_vol_adj", "liquidity_adjusted_momentum"]].isna().sum().sum() == 0
