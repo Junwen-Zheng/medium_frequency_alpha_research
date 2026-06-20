@@ -2,8 +2,9 @@
 __pycache__/
 *.pyc
 .ipynb_checkpoints/
+.pytest_cache/
 data/*.parquet
 outputs/*.parquet
 outputs/*.csv
 outputs/*.json
-reports/*.md
+reports/generated_*.md
