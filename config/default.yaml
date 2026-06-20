@@ -12,6 +12,7 @@ research:
   short_quantile: 0.20
   transaction_cost_bps: 5
   random_seed: 42
+  run_signal_decay: false
 model:
   include_pytorch: false
   pytorch_epochs: 1

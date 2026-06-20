@@ -133,10 +133,13 @@ class ResearchWorkflow:
         if best_score is None:
             raise RuntimeError("Selected model was not found in test model stack.")
 
-        # Run decay diagnostics before portfolio diagnostics. This keeps the
-        # pure signal evaluation separate from portfolio construction.
-        decay = signal_decay(frame, best_score, ohlcv, horizons=[1, 5, 10, 20])
-        decay.to_csv(self.outputs / "signal_decay.csv")
+        # Signal-decay diagnostics are part of the full research workflow, but
+        # they can be toggled off for a fast public demo run.
+        if cfg["research"].get("run_signal_decay", False):
+            decay = signal_decay(frame, best_score, ohlcv, horizons=[1, 5, 10, 20])
+            decay.to_csv(self.outputs / "signal_decay.csv")
+        else:
+            decay = pd.DataFrame()
 
         returns, bt_metrics = backtest_long_short(
             best_score,
