@@ -53,7 +53,15 @@ class ResearchWorkflow:
     def _fit_model_stack(self, train: pd.DataFrame, eval_frame: pd.DataFrame, features: list[str], target: str, seed: int):
         return [
             fit_ridge(train, eval_frame, features, target),
-            fit_random_forest(train, eval_frame, features, target, seed=seed),
+            fit_random_forest(
+                train,
+                eval_frame,
+                features,
+                target,
+                seed=seed,
+                n_estimators=self.config["model"].get("random_forest_estimators", 40),
+                max_depth=self.config["model"].get("random_forest_max_depth", 5),
+            ),
             fit_pytorch_mlp(
                 train,
                 eval_frame,
@@ -64,6 +72,7 @@ class ResearchWorkflow:
                 lr=self.config["model"].get("learning_rate", 1e-3),
                 weight_decay=self.config["model"].get("weight_decay", 1e-4),
                 seed=seed,
+                max_train_rows=self.config["model"].get("max_pytorch_train_rows", 5000),
             ),
         ]
 

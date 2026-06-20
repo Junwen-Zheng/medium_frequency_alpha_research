@@ -13,10 +13,13 @@ research:
   transaction_cost_bps: 5
   random_seed: 42
 model:
-  pytorch_epochs: 3
+  pytorch_epochs: 1
   hidden_dim: 32
   learning_rate: 0.001
   weight_decay: 0.0001
+  max_pytorch_train_rows: 3000
+  random_forest_estimators: 30
+  random_forest_max_depth: 5
 report:
   title: "Medium-Frequency Equity Signal Research"
   author: "Junwen Zheng"

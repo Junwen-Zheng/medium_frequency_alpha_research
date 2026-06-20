@@ -26,21 +26,27 @@ def fit_ridge(train: pd.DataFrame, test: pd.DataFrame, features: list[str], targ
     return ModelResult("ridge", pred, importance)
 
 
-def fit_random_forest(train: pd.DataFrame, test: pd.DataFrame, features: list[str], target: str, seed: int = 42) -> ModelResult:
-    model = RandomForestRegressor(n_estimators=80, min_samples_leaf=30, max_depth=5, random_state=seed, n_jobs=-1)
+def fit_random_forest(train: pd.DataFrame, test: pd.DataFrame, features: list[str], target: str, seed: int = 42, n_estimators: int = 40, max_depth: int = 5) -> ModelResult:
+    model = RandomForestRegressor(n_estimators=n_estimators, min_samples_leaf=30, max_depth=max_depth, random_state=seed, n_jobs=-1)
     model.fit(train[features].values, train[target].values)
     pred = pd.Series(model.predict(test[features].values), index=test.index, name="rf_score")
     importance = pd.Series(model.feature_importances_, index=features).sort_values(ascending=False)
     return ModelResult("random_forest", pred, importance)
 
 
-def fit_pytorch_mlp(train: pd.DataFrame, test: pd.DataFrame, features: list[str], target: str, epochs: int = 80, hidden_dim: int = 32, lr: float = 1e-3, weight_decay: float = 1e-4, seed: int = 42) -> ModelResult:
-    """Fit a small PyTorch MLP to predict cross-sectional forward relative returns."""
+def fit_pytorch_mlp(train: pd.DataFrame, test: pd.DataFrame, features: list[str], target: str, epochs: int = 80, hidden_dim: int = 32, lr: float = 1e-3, weight_decay: float = 1e-4, seed: int = 42, max_train_rows: int = 5000) -> ModelResult:
+    """Fit a small PyTorch MLP to predict cross-sectional forward relative returns.
+
+    The default max_train_rows keeps the public demo fast and reduces the risk
+    of presenting a large neural model as the main research contribution.
+    """
     import torch
     from torch import nn
 
-    rng = np.random.default_rng(seed)
     torch.manual_seed(seed)
+
+    if len(train) > max_train_rows:
+        train = train.sample(max_train_rows, random_state=seed).sort_index()
 
     x_train = train[features].replace([np.inf, -np.inf], np.nan).fillna(0).values.astype("float32")
     y_train = train[target].fillna(0).values.astype("float32").reshape(-1, 1)
