@@ -28,11 +28,19 @@ def summarize_ic(rank_ic: pd.Series) -> dict:
 
 
 def signal_decay(feature_frame: pd.DataFrame, score: pd.Series, ohlcv: pd.DataFrame, horizons: list[int]) -> pd.DataFrame:
+    """Summarize rank-IC at multiple forward horizons.
+
+    The score is usually only available on the final evaluation window. Reindexing
+    each horizon target to the score index keeps the diagnostic fast and avoids
+    accidentally evaluating periods where no score was produced.
+    """
     rows = []
     adj = ohlcv["adj_close"].sort_index()
+    score = score.dropna().sort_index()
     for h in horizons:
         fwd = adj.groupby(level="ticker").shift(-h) / adj - 1
         rel = fwd - fwd.groupby(level="date").transform("mean")
+        rel = rel.reindex(score.index)
         ric = daily_rank_ic(score, rel)
         summary = summarize_ic(ric)
         summary["horizon"] = h
