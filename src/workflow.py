@@ -51,7 +51,7 @@ class ResearchWorkflow:
         return train, validation, test
 
     def _fit_model_stack(self, train: pd.DataFrame, eval_frame: pd.DataFrame, features: list[str], target: str, seed: int):
-        return [
+        models = [
             fit_ridge(train, eval_frame, features, target),
             fit_random_forest(
                 train,
@@ -62,19 +62,23 @@ class ResearchWorkflow:
                 n_estimators=self.config["model"].get("random_forest_estimators", 40),
                 max_depth=self.config["model"].get("random_forest_max_depth", 5),
             ),
-            fit_pytorch_mlp(
-                train,
-                eval_frame,
-                features,
-                target,
-                epochs=self.config["model"].get("pytorch_epochs", 80),
-                hidden_dim=self.config["model"].get("hidden_dim", 32),
-                lr=self.config["model"].get("learning_rate", 1e-3),
-                weight_decay=self.config["model"].get("weight_decay", 1e-4),
-                seed=seed,
-                max_train_rows=self.config["model"].get("max_pytorch_train_rows", 5000),
-            ),
         ]
+        if self.config["model"].get("include_pytorch", False):
+            models.append(
+                fit_pytorch_mlp(
+                    train,
+                    eval_frame,
+                    features,
+                    target,
+                    epochs=self.config["model"].get("pytorch_epochs", 80),
+                    hidden_dim=self.config["model"].get("hidden_dim", 32),
+                    lr=self.config["model"].get("learning_rate", 1e-3),
+                    weight_decay=self.config["model"].get("weight_decay", 1e-4),
+                    seed=seed,
+                    max_train_rows=self.config["model"].get("max_pytorch_train_rows", 5000),
+                )
+            )
+        return models
 
     def _summarize_predictions(self, predictions: pd.Series, target: pd.Series) -> dict:
         ric = daily_rank_ic(predictions, target)

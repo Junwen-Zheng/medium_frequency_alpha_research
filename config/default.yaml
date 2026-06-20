@@ -13,6 +13,7 @@ research:
   transaction_cost_bps: 5
   random_seed: 42
 model:
+  include_pytorch: false
   pytorch_epochs: 1
   hidden_dim: 32
   learning_rate: 0.001
