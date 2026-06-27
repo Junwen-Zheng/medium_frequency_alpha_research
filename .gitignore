@@ -8,3 +8,9 @@ outputs/*.parquet
 outputs/*.csv
 outputs/*.json
 reports/generated_*.md
+
+# Local backup folders
+backup_before_stage1_*/
+.pytest_cache/
+__pycache__/
+*.pyc
