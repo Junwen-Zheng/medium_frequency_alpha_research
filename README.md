@@ -1,51 +1,35 @@
 # Medium-Frequency Equity Signal Research
 
-This repository is a reproducible research case study for medium-frequency equity signal evaluation. It is intentionally framed as a **research process**, not as a trading system and not as an “agentic” demo.
+This repository is a research notebook-style codebase for testing whether simple public OHLCV-derived features contain stable cross-sectional information over a 5-20 trading-day horizon.
 
-The goal is to test whether simple public price/volume signals contain stable cross-sectional information over a 5–20 trading-day horizon, then document the evidence clearly enough that another researcher can understand what was tried, what failed, and what I would test next.
+The project is deliberately limited. It does **not** claim to find production-ready alpha. The purpose is to document a research process: define a hypothesis, construct point-in-time features, avoid leakage, measure rank IC / decay, run a simple market-neutral diagnostic, record negative results, and decide what should be tested next.
 
 ## Research question
 
-Can a small set of point-in-time OHLCV-derived features produce useful cross-sectional ranking signals for medium-horizon U.S. equities after controlling for leakage, turnover, transaction costs, and out-of-sample validation?
+Can a small set of lagged price, volume, and volatility-adjusted features produce useful cross-sectional ranking signals for medium-horizon U.S. equities after leakage checks, out-of-sample validation, turnover, and transaction-cost assumptions?
 
-This is a deliberately limited question. The project does **not** claim to find production-ready alpha. It shows how I structure a research investigation: data cleaning, hypothesis design, baselines, model comparison, ablation, backtesting diagnostics, and honest limitations.
+## Current scope
 
-## What this demonstrates
-
-- Point-in-time feature construction with explicit lagging rules.
-- Medium-frequency cross-sectional targets over a configurable 5–20 day horizon.
-- Baseline and ML models: ridge regression, random forest, and a small PyTorch MLP ranker.
-- IC / rank-IC validation, signal decay checks, market-neutral long/short backtest diagnostics, and regime-sliced stability analysis.
-- Documentation of failed experiments, second-hypothesis implementation, and research decisions, not only final code.
-- Reproducible experiment pipeline that generates model outputs, backtest metrics, and Markdown reports.
-
-## What changed from the first version
-
-This repo was reworked after feedback that the previous version looked too much like a clean tool and not enough like a researcher’s work. The changes are designed to show the research trail:
-
-- Removed overstated “agentic workflow” language; this is now described as a reproducible research pipeline.
-- Added a research report with hypotheses, dataset assumptions, evaluation design, results, limitations, and next experiments.
-- Added a research log showing the sequence of ideas, failed attempts, and conclusions.
-- Added an experiment matrix documenting what was tested and why each experiment did or did not survive.
-- Kept the code modest and interpretable rather than pretending to be a production quant platform.
+- Public OHLCV data via `yfinance` for a small liquid U.S. equity universe.
+- Point-in-time features with explicit one-day feature lagging.
+- Forward-return labels computed within each ticker, then cross-sectionally demeaned by date.
+- Baseline models: ridge regression, random forest, and an optional small PyTorch MLP.
+- Diagnostics: daily rank IC, IC summary, signal decay, simple market-neutral long/short backtest, and regime-sliced stability checks.
+- Synthetic data exists only for offline tests and CI-style smoke checks. It is not treated as research evidence.
 
 ## Repository structure
 
 ```text
-config/default.yaml                   Experiment configuration
-src/data.py                           Data download / synthetic fallback / data quality checks
-src/features.py                       Point-in-time feature construction and target definition
-src/models.py                         Ridge, random forest, and PyTorch MLP ranker
-src/evaluation.py                     Rank-IC, IC summary, signal decay, hypothesis and regime diagnostics
-src/regime.py                         Ex-ante market-regime classification for stability checks
-src/backtest.py                       Market-neutral long/short backtest with cost assumptions
-src/workflow.py                       Reproducible research pipeline runner
-src/reporting.py                      Markdown report generation
-src/cli.py                            Command-line entrypoint
-reports/research_report.md            Static research write-up / case-study report
-docs/experiments/experiment_matrix.csv  Research experiment matrix
-docs/research_log/                    Chronological research notes
-scripts/commit_sequence.md            Suggested commit sequence for GitHub history
+config/default.yaml        Experiment configuration
+src/data.py                Public OHLCV download and synthetic test data generator
+src/features.py            Point-in-time feature construction and target definition
+src/models.py              Ridge, random forest, and optional PyTorch MLP baselines
+src/evaluation.py          Rank IC, signal decay, and stability diagnostics
+src/regime.py              Ex-ante market-regime labels for diagnostic slicing
+src/backtest.py            Market-neutral long/short diagnostic backtest
+tests/                     Leakage, alignment, and pipeline integrity tests
+docs/research_log/         Research notes written after each meaningful iteration
+docs/study_notes/          Notes used to understand and audit the implementation
 ```
 
 ## Quick start
@@ -55,40 +39,31 @@ python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
 
-# Real public dataset via yfinance
+# Primary research path: real public data
 python -m src.cli run --config config/default.yaml
 
-# No-internet demo using synthetic data
+# Offline smoke test only; do not use this as research evidence
 python -m src.cli run --config config/default.yaml --synthetic
+
+pytest -q
 ```
 
 Outputs are written to `outputs/` and the generated Markdown report is written to `reports/generated_research_report.md`.
 
-## Dataset note
-
-The real-data mode downloads public OHLCV data using `yfinance`. This is not a survivorship-free institutional dataset and should not be treated as production research. I use it here because the purpose is to demonstrate research discipline: point-in-time feature construction, train/validation/test splits, outlier policy, signal validation, transaction-cost assumptions, and reproducibility.
-
-## Current conclusion
-
-The project currently supports a cautious conclusion: simple price/volume and volatility-adjusted features can produce useful diagnostics, but the evidence is not strong enough to claim durable tradable alpha. The latest version implements a second hypothesis family and adds regime-sliced rank-IC checks, which improves the research process but still leaves the core limitation unchanged: stronger evidence would require broader data, richer features, and deeper out-of-sample testing.
-
-
-## Implemented second hypothesis
-
-After reviewer feedback, I added a second hypothesis family rather than only documenting it. The new features test whether volatility-adjusted momentum/reversal is more stable than raw return features. The workflow now generates:
-
-- `outputs/hypothesis_family_comparison.csv` - raw price/volume vs volatility-adjusted hypothesis-family diagnostics.
-- `outputs/regime_sliced_rank_ic.csv` - selected-model rank IC by simple ex-ante market regime.
-
-This is intentionally not presented as proof of alpha. It is meant to demonstrate research iteration: hypothesis, implementation, comparison, regime analysis, and honest interpretation.
-
-## Suggested resume wording
-
-> Built a reproducible medium-frequency equity signal research case study using public OHLCV data, point-in-time feature construction, ridge/random forest/PyTorch ranking models, rank-IC and decay analysis, failed-experiment documentation, and market-neutral backtesting with turnover and transaction-cost controls.
-
 ## Important limitations
 
-- Public OHLCV-only data is intentionally limited.
 - The universe is small and not survivorship-free.
-- Results are research diagnostics, not investment advice.
-- A stronger project would require broader universe coverage, point-in-time fundamentals/events/news, more robust transaction-cost modeling, and deeper walk-forward research.
+- Public OHLCV data is not institutional point-in-time data.
+- Transaction costs are simplified.
+- Results should be interpreted as research diagnostics, not investment advice.
+- A stronger version would require broader universe coverage, richer data, more realistic costs, stricter walk-forward validation, and deeper failed-experiment documentation.
+
+## Current research direction
+
+The next serious pass focuses on correctness before sophistication:
+
+1. Verify all forward-return labels are shifted within ticker.
+2. Keep synthetic data out of the main research conclusion.
+3. Add tests for leakage, alignment, and future-data usage.
+4. Run real-data experiments first, then document what fails.
+5. Make each research log explain the decision process, not just the final output.
