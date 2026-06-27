@@ -61,7 +61,7 @@ def write_report(
         "",
         "## Signal decay",
         "",
-        decay_table.to_markdown() if not decay_table.empty else "Signal decay was disabled for this quick demo run. Set `research.run_signal_decay: true` in the config to run it.",
+        decay_table.to_markdown() if not decay_table.empty else "Signal decay was disabled for this configuration. Set `research.run_signal_decay: true` in the config to run it.",
         "",
         "## Market-neutral backtest",
         "",

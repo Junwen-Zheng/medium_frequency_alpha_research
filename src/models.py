@@ -37,7 +37,7 @@ def fit_random_forest(train: pd.DataFrame, test: pd.DataFrame, features: list[st
 def fit_pytorch_mlp(train: pd.DataFrame, test: pd.DataFrame, features: list[str], target: str, epochs: int = 80, hidden_dim: int = 32, lr: float = 1e-3, weight_decay: float = 1e-4, seed: int = 42, max_train_rows: int = 5000) -> ModelResult:
     """Fit a small PyTorch MLP to predict cross-sectional forward relative returns.
 
-    The default max_train_rows keeps the public demo fast and reduces the risk
+    The default max_train_rows keeps the public smoke test fast and reduces the risk
     of presenting a large neural model as the main research contribution.
     """
     import torch
