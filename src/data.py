@@ -67,10 +67,10 @@ def download_ohlcv(tickers: Iterable[str], start: str, end: str, cache_path: str
 
 
 def make_synthetic_ohlcv(tickers: Iterable[str], start: str, end: str, seed: int = 42) -> pd.DataFrame:
-    """No-internet synthetic dataset for testing the pipeline only.
+    """Offline synthetic dataset for tests and smoke-test runs only.
 
     The synthetic generator creates correlated returns and volume regimes. It is not a substitute
-    for genuine data, but it lets the workflow run without internet.
+    for genuine data and should not be used as evidence for signal quality.
     """
     rng = np.random.default_rng(seed)
     dates = pd.bdate_range(start=start, end=end)

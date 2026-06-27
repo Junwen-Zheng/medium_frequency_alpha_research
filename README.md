@@ -21,7 +21,7 @@ Can a small set of lagged price, volume, and volatility-adjusted features produc
 
 ```text
 config/default.yaml        Experiment configuration
-src/data.py                Public OHLCV download and synthetic test data generator
+src/data.py                Public OHLCV download and synthetic smoke-test generator
 src/features.py            Point-in-time feature construction and target definition
 src/models.py              Ridge, random forest, and optional PyTorch MLP baselines
 src/evaluation.py          Rank IC, signal decay, and stability diagnostics
@@ -43,7 +43,7 @@ pip install -r requirements.txt
 python -m src.cli run --config config/default.yaml
 
 # Offline smoke test only; do not use this as research evidence
-python -m src.cli run --config config/default.yaml --synthetic
+python -m src.cli run --config config/default.yaml --smoke-test
 
 pytest -q
 ```

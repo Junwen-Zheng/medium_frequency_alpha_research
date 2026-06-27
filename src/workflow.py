@@ -21,6 +21,7 @@ class WorkflowResult:
     model_summaries: dict
     backtest_metrics: dict
     report_path: str
+    data_mode: str
 
 
 class ResearchWorkflow:
@@ -33,10 +34,10 @@ class ResearchWorkflow:
     hypotheses, interpretation, and next experiments.
     """
 
-    def __init__(self, config_path: str | Path, synthetic: bool = False):
+    def __init__(self, config_path: str | Path, smoke_test: bool = False):
         self.config_path = Path(config_path)
         self.config = yaml.safe_load(self.config_path.read_text())
-        self.synthetic = synthetic
+        self.smoke_test = smoke_test
         self.outputs = Path("outputs")
         self.reports = Path("reports")
         self.outputs.mkdir(exist_ok=True)
@@ -92,10 +93,19 @@ class ResearchWorkflow:
         seed = cfg["research"].get("random_seed", 42)
         horizon = cfg["research"].get("horizon_days", 10)
 
-        if self.synthetic:
+        if self.smoke_test:
+            data_mode = "synthetic_smoke_test"
             ohlcv = make_synthetic_ohlcv(tickers, start, end, seed=seed)
         else:
-            ohlcv = download_ohlcv(tickers, start, end, cache_path="data/ohlcv.parquet")
+            data_mode = "real_public_ohlcv"
+            try:
+                ohlcv = download_ohlcv(tickers, start, end, cache_path="data/ohlcv.parquet")
+            except Exception as exc:
+                raise RuntimeError(
+                    "Real-data workflow failed. This research path does not silently fall back "
+                    "to synthetic data. Fix the data issue, or run "
+                    "`python -m src.cli run --smoke-test` only to verify the offline pipeline."
+                ) from exc
 
         dq = quality_report(ohlcv).to_dict()
         frame = build_features(ohlcv, horizon_days=horizon)
@@ -149,7 +159,7 @@ class ResearchWorkflow:
         regime_ic.to_csv(self.outputs / "regime_sliced_rank_ic.csv")
 
         # Signal-decay diagnostics are part of the full research workflow, but
-        # they can be toggled off for a fast public demo run.
+        # they can be toggled off for a faster exploratory run.
         if cfg["research"].get("run_signal_decay", False):
             decay = signal_decay(frame, best_score, ohlcv, horizons=[1, 5, 10, 20])
             decay.to_csv(self.outputs / "signal_decay.csv")
@@ -169,10 +179,11 @@ class ResearchWorkflow:
         else:
             bt_metrics = {
                 "selected_model": selected_model_name,
-                "note": "Backtest disabled for quick demo run. Set research.run_backtest: true to enable portfolio diagnostics.",
+                "note": "Backtest disabled for this configuration. Set research.run_backtest: true to enable portfolio diagnostics.",
             }
 
         summary_payload = {
+            "data_mode": data_mode,
             "data_quality": dq,
             "validation": validation_summaries,
             "test": model_summaries,
@@ -194,4 +205,4 @@ class ResearchWorkflow:
             family_comparison,
             regime_ic,
         )
-        return WorkflowResult(model_summaries, bt_metrics, str(report_path))
+        return WorkflowResult(model_summaries, bt_metrics, str(report_path), data_mode)
