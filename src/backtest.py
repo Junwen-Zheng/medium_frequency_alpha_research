@@ -4,9 +4,14 @@ import numpy as np
 import pandas as pd
 
 
-def make_market_neutral_weights(scores: pd.Series, long_q: float = 0.8, short_q: float = 0.2) -> pd.Series:
-    weights = []
-    for date, s in scores.dropna().groupby(level="date"):
+def make_market_neutral_weights(
+    scores: pd.Series,
+    long_q: float = 0.8,
+    short_q: float = 0.2,
+) -> pd.Series:
+    """Create equal-weight long/short positions independently each date."""
+    weights: list[pd.Series] = []
+    for _, s in scores.dropna().groupby(level="date"):
         if len(s) < 5:
             continue
         lo = s.quantile(short_q)
@@ -24,11 +29,37 @@ def make_market_neutral_weights(scores: pd.Series, long_q: float = 0.8, short_q:
     return pd.concat(weights).sort_index().rename("weight")
 
 
-def backtest_long_short(scores: pd.Series, ohlcv: pd.DataFrame, long_q: float, short_q: float, cost_bps: float) -> tuple[pd.Series, dict]:
+def forward_returns_by_ticker(ohlcv: pd.DataFrame, horizon_days: int = 1) -> pd.Series:
+    """Forward returns shifted within ticker, never across ticker boundaries."""
     adj = ohlcv["adj_close"].sort_index()
-    fwd_1d = adj.groupby(level="ticker").pct_change().shift(-1)
+    future = adj.groupby(level="ticker").shift(-horizon_days)
+    return (future / adj - 1.0).rename(f"fwd_{horizon_days}d")
+
+
+def backtest_long_short(
+    scores: pd.Series,
+    ohlcv: pd.DataFrame,
+    long_q: float,
+    short_q: float,
+    cost_bps: float,
+) -> tuple[pd.Series, dict]:
+    """Daily long/short diagnostic backtest.
+
+    This is a research diagnostic, not a production simulator. The important
+    guardrail is that next-day returns are computed within each ticker. A global
+    shift would silently mix returns across stocks and invalidate the result.
+    """
     weights = make_market_neutral_weights(scores, long_q, short_q)
-    gross = (weights * fwd_1d.reindex(weights.index)).groupby(level="date").sum().rename("gross_return")
+    if weights.empty:
+        return pd.Series(dtype=float, name="net_return"), {}
+
+    fwd_1d = forward_returns_by_ticker(ohlcv, horizon_days=1)
+    aligned = pd.concat(
+        [weights.rename("weight"), fwd_1d.reindex(weights.index).rename("fwd_1d")],
+        axis=1,
+    ).dropna()
+
+    gross = (aligned["weight"] * aligned["fwd_1d"]).groupby(level="date").sum().rename("gross_return")
 
     wide_w = weights.unstack("ticker").fillna(0).sort_index()
     turnover = wide_w.diff().abs().sum(axis=1).fillna(wide_w.abs().sum(axis=1))
