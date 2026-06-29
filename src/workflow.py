@@ -12,6 +12,7 @@ from .regime import market_regime_labels
 from .features import build_features, feature_columns, feature_family_columns, composite_family_score
 from .models import fit_ridge, fit_random_forest, fit_pytorch_mlp
 from .evaluation import daily_rank_ic, summarize_ic, signal_decay, compare_feature_families, regime_sliced_rank_ic
+from .walk_forward import run_walk_forward_validation
 from .backtest import backtest_long_short
 from .reporting import write_report
 
@@ -158,6 +159,27 @@ class ResearchWorkflow:
         regime_ic = regime_sliced_rank_ic(best_score, test[target], regimes)
         regime_ic.to_csv(self.outputs / "regime_sliced_rank_ic.csv")
 
+        if cfg["research"].get("run_walk_forward", True):
+            walk_forward_metrics, walk_forward_diagnostics = run_walk_forward_validation(
+                frame=frame,
+                features=features,
+                target=target,
+                fit_model_stack=self._fit_model_stack,
+                summarize_predictions=self._summarize_predictions,
+                validation_start=cfg["research"]["validation_start"],
+                test_start=cfg["research"]["test_start"],
+                horizon_days=horizon,
+                seed=seed,
+                fold_months=cfg["research"].get("walk_forward_fold_months", 6),
+                min_train_rows=cfg["research"].get("walk_forward_min_train_rows", 500),
+                min_eval_rows=cfg["research"].get("walk_forward_min_eval_rows", 30),
+            )
+            walk_forward_metrics.to_csv(self.outputs / "walk_forward_metrics.csv", index=False)
+            walk_forward_diagnostics.to_csv(self.outputs / "walk_forward_fold_diagnostics.csv", index=False)
+        else:
+            walk_forward_metrics = pd.DataFrame()
+            walk_forward_diagnostics = pd.DataFrame()
+
         # Signal-decay diagnostics are part of the full research workflow, but
         # they can be toggled off for a faster exploratory run.
         if cfg["research"].get("run_signal_decay", False):
@@ -189,6 +211,10 @@ class ResearchWorkflow:
             "test": model_summaries,
             "hypothesis_family_comparison": family_comparison.to_dict(),
             "regime_sliced_rank_ic": regime_ic.to_dict(),
+            "walk_forward": {
+                "metrics": walk_forward_metrics.to_dict(orient="records"),
+                "diagnostics": walk_forward_diagnostics.to_dict(orient="records"),
+            },
             "backtest": bt_metrics,
         }
         (self.outputs / "workflow_summary.json").write_text(json.dumps(summary_payload, indent=2))
@@ -204,5 +230,7 @@ class ResearchWorkflow:
             decay,
             family_comparison,
             regime_ic,
+            walk_forward_metrics,
+            walk_forward_diagnostics,
         )
         return WorkflowResult(model_summaries, bt_metrics, str(report_path), data_mode)

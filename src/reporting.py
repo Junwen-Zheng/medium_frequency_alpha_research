@@ -6,7 +6,7 @@ import pandas as pd
 
 
 def _markdown_table_or_note(df: pd.DataFrame, note: str) -> str:
-    return df.to_markdown() if df is not None and not df.empty else note
+    return df.to_markdown(index=False) if df is not None and not df.empty else note
 
 
 def write_report(
@@ -19,6 +19,8 @@ def write_report(
     decay_table: pd.DataFrame,
     family_comparison: pd.DataFrame | None = None,
     regime_ic: pd.DataFrame | None = None,
+    walk_forward_metrics: pd.DataFrame | None = None,
+    walk_forward_diagnostics: pd.DataFrame | None = None,
 ) -> None:
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -59,9 +61,17 @@ def write_report(
         "",
         _markdown_table_or_note(regime_ic, "Regime-sliced rank IC was not generated."),
         "",
+        "## Walk-forward validation",
+        "",
+        "This section repeats model selection across chronological folds. It tests whether the signal survives across time instead of relying on one validation/test split.",
+        "",
+        _markdown_table_or_note(walk_forward_metrics, "Walk-forward validation was disabled or produced no valid folds."),
+        "",
+        "Per-model fold diagnostics are written to `outputs/walk_forward_fold_diagnostics.csv`. Mixed fold results should be treated as weaker evidence than consistently positive out-of-sample performance.",
+        "",
         "## Signal decay",
         "",
-        decay_table.to_markdown() if not decay_table.empty else "Signal decay was disabled for this configuration. Set `research.run_signal_decay: true` in the config to run it.",
+        decay_table.to_markdown(index=False) if not decay_table.empty else "Signal decay was disabled for this configuration. Set `research.run_signal_decay: true` in the config to run it.",
         "",
         "## Market-neutral backtest",
         "",
