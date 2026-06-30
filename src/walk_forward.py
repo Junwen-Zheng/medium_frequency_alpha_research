@@ -255,3 +255,123 @@ def summarize_walk_forward_results(
             out["selected_model_best_or_tied_rate"] = np.nan
 
     return pd.DataFrame([out])
+
+
+def run_feature_family_walk_forward(
+    frame: pd.DataFrame,
+    target: str,
+    family_columns: dict[str, list[str]],
+    summarize_predictions: Callable,
+    validation_start: str | pd.Timestamp,
+    test_start: str | pd.Timestamp,
+    horizon_days: int,
+    fold_months: int = 6,
+    min_train_rows: int = 500,
+    min_eval_rows: int = 30,
+) -> pd.DataFrame:
+    """Evaluate transparent feature-family scores across walk-forward folds.
+
+    This is an ablation diagnostic, not a model search. Each family uses a simple
+    equal-weight composite score so the research question stays interpretable:
+    which hypothesis family, if any, is stable across chronological folds?
+    """
+    folds = make_walk_forward_folds(
+        frame=frame,
+        validation_start=validation_start,
+        test_start=test_start,
+        horizon_days=horizon_days,
+        fold_months=fold_months,
+        min_train_rows=min_train_rows,
+        min_eval_rows=min_eval_rows,
+    )
+
+    rows: list[dict] = []
+
+    for fold in folds:
+        for family, cols in family_columns.items():
+            available = [c for c in cols if c in frame.columns]
+            if not available:
+                continue
+
+            validation_score = fold.validation[available].mean(axis=1).rename(f"{family}_score")
+            test_score = fold.test[available].mean(axis=1).rename(f"{family}_score")
+
+            validation_summary = _finite_summary(
+                summarize_predictions(validation_score, fold.validation[target])
+            )
+            test_summary = _finite_summary(
+                summarize_predictions(test_score, fold.test[target])
+            )
+
+            rows.append(
+                {
+                    "fold_id": fold.fold_id,
+                    "family": family,
+                    "n_features": len(available),
+                    "features": "; ".join(available),
+                    "train_start": str(fold.train.index.get_level_values("date").min().date()),
+                    "train_end": str(fold.train_end.date()),
+                    "validation_start": str(fold.validation_start.date()),
+                    "validation_end": str(fold.validation_end.date()),
+                    "test_start": str(fold.test_start.date()),
+                    "test_end": str(fold.test_end.date()),
+                    "train_rows": len(fold.train),
+                    "validation_rows": len(fold.validation),
+                    "test_rows": len(fold.test),
+                    "validation_mean_rank_ic": validation_summary.get("mean_rank_ic"),
+                    "validation_ir": validation_summary.get("ir"),
+                    "validation_positive_days": validation_summary.get("positive_days"),
+                    "validation_n_days": validation_summary.get("n_days"),
+                    "test_mean_rank_ic": test_summary.get("mean_rank_ic"),
+                    "test_ir": test_summary.get("ir"),
+                    "test_positive_days": test_summary.get("positive_days"),
+                    "test_n_days": test_summary.get("n_days"),
+                }
+            )
+
+    return pd.DataFrame(rows)
+
+
+def summarize_feature_family_walk_forward_results(metrics: pd.DataFrame) -> pd.DataFrame:
+    """Aggregate feature-family walk-forward ablation metrics."""
+    if metrics is None or metrics.empty:
+        return pd.DataFrame()
+
+    rows: list[dict] = []
+
+    for family, grp in metrics.groupby("family"):
+        test_ic = pd.to_numeric(grp["test_mean_rank_ic"], errors="coerce")
+        test_ir = pd.to_numeric(grp["test_ir"], errors="coerce")
+        validation_ic = pd.to_numeric(grp["validation_mean_rank_ic"], errors="coerce")
+
+        valid_corr = pd.concat(
+            [validation_ic.rename("validation"), test_ic.rename("test")],
+            axis=1,
+        ).dropna()
+
+        if len(valid_corr) >= 2 and valid_corr["validation"].std(ddof=0) > 0 and valid_corr["test"].std(ddof=0) > 0:
+            validation_test_corr = float(valid_corr["validation"].corr(valid_corr["test"]))
+        else:
+            validation_test_corr = np.nan
+
+        rows.append(
+            {
+                "family": family,
+                "n_folds": int(len(grp)),
+                "n_features": int(grp["n_features"].max()),
+                "mean_test_rank_ic": float(test_ic.mean()),
+                "median_test_rank_ic": float(test_ic.median()),
+                "worst_test_rank_ic": float(test_ic.min()),
+                "best_test_rank_ic": float(test_ic.max()),
+                "mean_test_ir": float(test_ir.mean()),
+                "positive_test_folds": int((test_ic > 0).sum()),
+                "positive_test_fold_rate": float((test_ic > 0).mean()),
+                "mean_validation_rank_ic": float(validation_ic.mean()),
+                "validation_test_rank_ic_correlation": validation_test_corr,
+            }
+        )
+
+    return pd.DataFrame(rows).sort_values(
+        ["positive_test_fold_rate", "mean_test_rank_ic"],
+        ascending=[False, False],
+    )

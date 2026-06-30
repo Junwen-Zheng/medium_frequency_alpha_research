@@ -37,11 +37,31 @@ def test_report_includes_walk_forward_section(tmp_path):
                 }
             ]
         ),
+        feature_family_walk_forward=pd.DataFrame(
+            [
+                {
+                    "fold_id": 1,
+                    "family": "raw_price_volume",
+                    "test_mean_rank_ic": 0.01,
+                }
+            ]
+        ),
+        feature_family_walk_forward_summary=pd.DataFrame(
+            [
+                {
+                    "family": "raw_price_volume",
+                    "n_folds": 1,
+                    "positive_test_fold_rate": 1.0,
+                }
+            ]
+        ),
     )
 
     text = report_path.read_text()
     assert "## Walk-forward validation" in text
     assert "Aggregate robustness summary" in text
     assert "positive_test_fold_rate" in text
+    assert "Feature-family walk-forward ablation" in text
+    assert "raw_price_volume" in text
     assert "ridge" in text
     assert "outputs/walk_forward_fold_diagnostics.csv" in text

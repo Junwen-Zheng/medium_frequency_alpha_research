@@ -190,3 +190,18 @@ The aggregate walk-forward summary is mixed rather than robust:
 This weakens the evidence for a stable tradable alpha signal. The current research result should therefore be interpreted as an exploratory signal-development workflow, not proof of production-ready alpha. The useful finding is process-oriented: the pipeline now exposes instability across time, model-selection fragility, and the need for stronger robustness tests before adding model complexity.
 
 Next research steps should focus on feature-family walk-forward ablation, transaction-cost-aware portfolio diagnostics, and stricter universe/regime robustness rather than immediately adding more flexible models.
+
+## Stage 5: Feature-family walk-forward ablation interpretation
+
+The Stage 5 feature-family walk-forward ablation tests whether the transparent hypothesis families are stable across chronological folds before relying on more flexible model baselines.
+
+The results are mixed:
+
+- The volatility-adjusted price-action family had a higher mean test rank IC than the raw price/volume family.
+- Both families were positive in only 2 of 4 test folds.
+- Both families showed negative validation/test rank-IC correlation.
+- The volatility-adjusted family had the better average result, but its worst fold was also materially negative.
+
+This suggests that volatility-adjusted price-action features may be a better research direction than raw price/volume features, but the evidence is still not robust enough to claim a stable alpha signal. The main value of this stage is that it separates hypothesis-family behavior from model-selection behavior and shows that the instability exists even in transparent, equal-weight signals.
+
+Next research steps should focus on improving the feature hypothesis, testing cost-aware portfolio behavior, and checking whether the signal survives broader universe and regime stress tests before adding more complex models.

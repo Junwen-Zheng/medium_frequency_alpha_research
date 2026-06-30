@@ -22,6 +22,8 @@ def write_report(
     walk_forward_metrics: pd.DataFrame | None = None,
     walk_forward_diagnostics: pd.DataFrame | None = None,
     walk_forward_summary: pd.DataFrame | None = None,
+    feature_family_walk_forward: pd.DataFrame | None = None,
+    feature_family_walk_forward_summary: pd.DataFrame | None = None,
 ) -> None:
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -55,6 +57,18 @@ def write_report(
         "This table compares transparent composite scores for the original raw price/volume family versus the implemented volatility-adjusted follow-up hypothesis. It is meant to test whether a feature idea deserves further research before relying on a more flexible model.",
         "",
         _markdown_table_or_note(family_comparison, "Hypothesis-family comparison was not generated."),
+        "",
+        "## Feature-family walk-forward ablation",
+        "",
+        "This section evaluates transparent equal-weight feature-family scores across chronological folds. It checks whether a hypothesis family is stable over time before relying on a more flexible model.",
+        "",
+        "### Feature-family aggregate summary",
+        "",
+        _markdown_table_or_note(feature_family_walk_forward_summary, "Feature-family walk-forward summary was not generated."),
+        "",
+        "### Feature-family fold metrics",
+        "",
+        _markdown_table_or_note(feature_family_walk_forward, "Feature-family walk-forward metrics were not generated."),
         "",
         "## Regime-sliced rank IC",
         "",
