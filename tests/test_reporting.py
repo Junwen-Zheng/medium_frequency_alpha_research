@@ -28,9 +28,20 @@ def test_report_includes_walk_forward_section(tmp_path):
         regime_ic=pd.DataFrame(),
         walk_forward_metrics=walk_forward_metrics,
         walk_forward_diagnostics=pd.DataFrame(),
+        walk_forward_summary=pd.DataFrame(
+            [
+                {
+                    "n_folds": 1,
+                    "positive_test_fold_rate": 1.0,
+                    "selected_model_counts": "ridge:1",
+                }
+            ]
+        ),
     )
 
     text = report_path.read_text()
     assert "## Walk-forward validation" in text
+    assert "Aggregate robustness summary" in text
+    assert "positive_test_fold_rate" in text
     assert "ridge" in text
     assert "outputs/walk_forward_fold_diagnostics.csv" in text

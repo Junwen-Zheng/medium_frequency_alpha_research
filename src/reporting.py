@@ -21,6 +21,7 @@ def write_report(
     regime_ic: pd.DataFrame | None = None,
     walk_forward_metrics: pd.DataFrame | None = None,
     walk_forward_diagnostics: pd.DataFrame | None = None,
+    walk_forward_summary: pd.DataFrame | None = None,
 ) -> None:
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -65,9 +66,15 @@ def write_report(
         "",
         "This section repeats model selection across chronological folds. It tests whether the signal survives across time instead of relying on one validation/test split.",
         "",
+        "### Aggregate robustness summary",
+        "",
+        _markdown_table_or_note(walk_forward_summary, "Walk-forward summary was not generated."),
+        "",
+        "### Selected-model fold metrics",
+        "",
         _markdown_table_or_note(walk_forward_metrics, "Walk-forward validation was disabled or produced no valid folds."),
         "",
-        "Per-model fold diagnostics are written to `outputs/walk_forward_fold_diagnostics.csv`. Mixed fold results should be treated as weaker evidence than consistently positive out-of-sample performance.",
+        "Per-model fold diagnostics are written to `outputs/walk_forward_fold_diagnostics.csv`. Mixed fold results, model switches, weak validation/test correlation, or poor selected-model hit rate should be treated as weaker evidence than consistently positive out-of-sample performance.",
         "",
         "## Signal decay",
         "",

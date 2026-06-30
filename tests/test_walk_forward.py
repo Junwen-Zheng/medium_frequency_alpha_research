@@ -79,3 +79,54 @@ def test_walk_forward_outputs_selected_model_metrics():
     assert not diagnostics.empty
     assert set(metrics["selected_model"]) == {"mock"}
     assert np.isfinite(metrics["test_mean_rank_ic"]).all()
+
+
+def test_walk_forward_summary_reports_stability_diagnostics():
+    metrics = pd.DataFrame(
+        [
+            {
+                "fold_id": 1,
+                "selected_model": "ridge",
+                "validation_mean_rank_ic": 0.05,
+                "test_mean_rank_ic": 0.02,
+                "test_ir": 1.0,
+            },
+            {
+                "fold_id": 2,
+                "selected_model": "random_forest",
+                "validation_mean_rank_ic": 0.04,
+                "test_mean_rank_ic": -0.01,
+                "test_ir": -0.5,
+            },
+            {
+                "fold_id": 3,
+                "selected_model": "random_forest",
+                "validation_mean_rank_ic": -0.02,
+                "test_mean_rank_ic": 0.03,
+                "test_ir": 1.5,
+            },
+        ]
+    )
+
+    diagnostics = pd.DataFrame(
+        [
+            {"fold_id": 1, "model": "ridge", "selected_on_validation": True, "test_mean_rank_ic": 0.02},
+            {"fold_id": 1, "model": "random_forest", "selected_on_validation": False, "test_mean_rank_ic": 0.01},
+            {"fold_id": 2, "model": "ridge", "selected_on_validation": False, "test_mean_rank_ic": 0.02},
+            {"fold_id": 2, "model": "random_forest", "selected_on_validation": True, "test_mean_rank_ic": -0.01},
+            {"fold_id": 3, "model": "ridge", "selected_on_validation": False, "test_mean_rank_ic": 0.01},
+            {"fold_id": 3, "model": "random_forest", "selected_on_validation": True, "test_mean_rank_ic": 0.03},
+        ]
+    )
+
+    from src.walk_forward import summarize_walk_forward_results
+
+    summary = summarize_walk_forward_results(metrics, diagnostics)
+
+    assert len(summary) == 1
+    row = summary.iloc[0]
+    assert row["n_folds"] == 3
+    assert row["positive_test_folds"] == 2
+    assert row["selected_model_switches"] == 1
+    assert row["selected_model_best_or_tied_folds"] == 2
+    assert np.isfinite(row["mean_selected_test_rank_ic"])

@@ -12,7 +12,7 @@ from .regime import market_regime_labels
 from .features import build_features, feature_columns, feature_family_columns, composite_family_score
 from .models import fit_ridge, fit_random_forest, fit_pytorch_mlp
 from .evaluation import daily_rank_ic, summarize_ic, signal_decay, compare_feature_families, regime_sliced_rank_ic
-from .walk_forward import run_walk_forward_validation
+from .walk_forward import run_walk_forward_validation, summarize_walk_forward_results
 from .backtest import backtest_long_short
 from .reporting import write_report
 
@@ -174,11 +174,17 @@ class ResearchWorkflow:
                 min_train_rows=cfg["research"].get("walk_forward_min_train_rows", 500),
                 min_eval_rows=cfg["research"].get("walk_forward_min_eval_rows", 30),
             )
+            walk_forward_summary = summarize_walk_forward_results(
+                walk_forward_metrics,
+                walk_forward_diagnostics,
+            )
             walk_forward_metrics.to_csv(self.outputs / "walk_forward_metrics.csv", index=False)
             walk_forward_diagnostics.to_csv(self.outputs / "walk_forward_fold_diagnostics.csv", index=False)
+            walk_forward_summary.to_csv(self.outputs / "walk_forward_summary.csv", index=False)
         else:
             walk_forward_metrics = pd.DataFrame()
             walk_forward_diagnostics = pd.DataFrame()
+            walk_forward_summary = pd.DataFrame()
 
         # Signal-decay diagnostics are part of the full research workflow, but
         # they can be toggled off for a faster exploratory run.
@@ -212,6 +218,7 @@ class ResearchWorkflow:
             "hypothesis_family_comparison": family_comparison.to_dict(),
             "regime_sliced_rank_ic": regime_ic.to_dict(),
             "walk_forward": {
+                "summary": walk_forward_summary.to_dict(orient="records"),
                 "metrics": walk_forward_metrics.to_dict(orient="records"),
                 "diagnostics": walk_forward_diagnostics.to_dict(orient="records"),
             },
@@ -232,5 +239,6 @@ class ResearchWorkflow:
             regime_ic,
             walk_forward_metrics,
             walk_forward_diagnostics,
+            walk_forward_summary,
         )
         return WorkflowResult(model_summaries, bt_metrics, str(report_path), data_mode)

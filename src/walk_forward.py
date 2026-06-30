@@ -192,3 +192,66 @@ def run_walk_forward_validation(
                 )
 
     return pd.DataFrame(metric_rows), pd.DataFrame(diagnostic_rows)
+
+
+def summarize_walk_forward_results(
+    metrics: pd.DataFrame,
+    diagnostics: pd.DataFrame | None = None,
+) -> pd.DataFrame:
+    """Aggregate walk-forward results into robustness diagnostics.
+
+    The goal is not to declare alpha. The goal is to summarize whether
+    out-of-sample rank IC is stable across chronological folds and whether
+    validation-based model selection reliably chooses the best test model.
+    """
+    if metrics is None or metrics.empty:
+        return pd.DataFrame()
+
+    out: dict[str, object] = {}
+
+    test_ic = pd.to_numeric(metrics["test_mean_rank_ic"], errors="coerce")
+    test_ir = pd.to_numeric(metrics["test_ir"], errors="coerce")
+    val_ic = pd.to_numeric(metrics["validation_mean_rank_ic"], errors="coerce")
+
+    out["n_folds"] = int(len(metrics))
+    out["mean_selected_test_rank_ic"] = float(test_ic.mean())
+    out["median_selected_test_rank_ic"] = float(test_ic.median())
+    out["worst_selected_test_rank_ic"] = float(test_ic.min())
+    out["best_selected_test_rank_ic"] = float(test_ic.max())
+    out["mean_selected_test_ir"] = float(test_ir.mean())
+    out["positive_test_folds"] = int((test_ic > 0).sum())
+    out["positive_test_fold_rate"] = float((test_ic > 0).mean())
+
+    selected_models = metrics["selected_model"].astype(str)
+    out["selected_model_counts"] = "; ".join(
+        f"{model}:{count}" for model, count in selected_models.value_counts().sort_index().items()
+    )
+    out["selected_model_switches"] = int((selected_models != selected_models.shift()).sum() - 1)
+
+    valid_corr = pd.concat(
+        [val_ic.rename("validation"), test_ic.rename("test")],
+        axis=1,
+    ).dropna()
+    if len(valid_corr) >= 2 and valid_corr["validation"].std(ddof=0) > 0 and valid_corr["test"].std(ddof=0) > 0:
+        out["validation_test_rank_ic_correlation"] = float(valid_corr["validation"].corr(valid_corr["test"]))
+    else:
+        out["validation_test_rank_ic_correlation"] = np.nan
+
+    if diagnostics is not None and not diagnostics.empty:
+        best_or_tied: list[bool] = []
+        for _, fold_rows in diagnostics.groupby("fold_id"):
+            selected = fold_rows[fold_rows["selected_on_validation"] == True]
+            if selected.empty:
+                continue
+            selected_test_ic = float(selected.iloc[0]["test_mean_rank_ic"])
+            best_test_ic = float(pd.to_numeric(fold_rows["test_mean_rank_ic"], errors="coerce").max())
+            best_or_tied.append(selected_test_ic >= best_test_ic - 1e-12)
+
+        if best_or_tied:
+            out["selected_model_best_or_tied_folds"] = int(sum(best_or_tied))
+            out["selected_model_best_or_tied_rate"] = float(np.mean(best_or_tied))
+        else:
+            out["selected_model_best_or_tied_folds"] = 0
+            out["selected_model_best_or_tied_rate"] = np.nan
+
+    return pd.DataFrame([out])

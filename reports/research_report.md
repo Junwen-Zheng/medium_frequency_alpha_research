@@ -173,3 +173,20 @@ The workflow now produces `outputs/hypothesis_family_comparison.csv`, comparing 
 The project now also creates simple ex-ante market-regime labels using equal-weight market returns, rolling trend, and rolling realized volatility. The workflow writes `outputs/regime_sliced_rank_ic.csv` to check whether model performance is concentrated in one market environment.
 
 This matters because a signal that only appears in one favorable regime is weaker evidence than a signal with broad stability. The regime split is intentionally simple and should be interpreted as a diagnostic, not a complete institutional regime model.
+
+## Stage 4: Walk-forward robustness interpretation
+
+The Stage 3/4 walk-forward diagnostics were added to test whether the signal survives repeated chronological out-of-sample evaluation rather than relying on a single validation/test split.
+
+The aggregate walk-forward summary is mixed rather than robust:
+
+- 4 chronological folds were evaluated.
+- The selected model changed across folds: `random_forest:2; ridge:2`.
+- Only 2 of 4 selected-model test folds were positive.
+- The mean selected-model test rank IC was approximately flat at `-0.0016`.
+- The validation/test rank-IC correlation was negative at approximately `-0.73`.
+- The validation-selected model was best or tied on the test fold only 25% of the time.
+
+This weakens the evidence for a stable tradable alpha signal. The current research result should therefore be interpreted as an exploratory signal-development workflow, not proof of production-ready alpha. The useful finding is process-oriented: the pipeline now exposes instability across time, model-selection fragility, and the need for stronger robustness tests before adding model complexity.
+
+Next research steps should focus on feature-family walk-forward ablation, transaction-cost-aware portfolio diagnostics, and stricter universe/regime robustness rather than immediately adding more flexible models.
