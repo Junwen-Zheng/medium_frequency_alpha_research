@@ -13,7 +13,7 @@ from .features import build_features, feature_columns, feature_family_columns, c
 from .models import fit_ridge, fit_random_forest, fit_pytorch_mlp
 from .evaluation import daily_rank_ic, summarize_ic, signal_decay, compare_feature_families, regime_sliced_rank_ic
 from .walk_forward import run_walk_forward_validation, summarize_walk_forward_results, run_feature_family_walk_forward, summarize_feature_family_walk_forward_results
-from .backtest import backtest_long_short
+from .backtest import backtest_cost_sensitivity
 from .reporting import write_report
 
 
@@ -215,21 +215,58 @@ class ResearchWorkflow:
             decay = pd.DataFrame()
 
         if cfg["research"].get("run_backtest", False):
-            returns, bt_metrics = backtest_long_short(
+            cost_grid = cfg["research"].get("transaction_cost_bps_grid")
+            if cost_grid is None:
+                cost_grid = [cfg["research"].get("transaction_cost_bps", 5)]
+
+            daily_costs, cost_summary = backtest_cost_sensitivity(
                 best_score,
                 ohlcv,
                 long_q=cfg["research"].get("long_quantile", 0.8),
                 short_q=cfg["research"].get("short_quantile", 0.2),
-                cost_bps=cfg["research"].get("transaction_cost_bps", 5),
+                cost_bps_grid=cost_grid,
+                rebalance_frequency=cfg["research"].get("rebalance_frequency"),
             )
+
+            if not daily_costs.empty:
+                daily_costs.to_csv(self.outputs / "cost_sensitive_long_short_returns.csv")
+
+            if not cost_summary.empty:
+                cost_summary.to_csv(
+                    self.outputs / "transaction_cost_sensitivity.csv",
+                    index=False,
+                )
+
+            base_cost_bps = float(cfg["research"].get("transaction_cost_bps", 5))
+
+            if not cost_summary.empty:
+                base_rows = cost_summary[
+                    cost_summary["cost_bps"].astype(float).sub(base_cost_bps).abs()
+                    < 1e-12
+                ]
+                selected_cost_row = (
+                    base_rows.iloc[0]
+                    if not base_rows.empty
+                    else cost_summary.iloc[0]
+                )
+                bt_metrics = json.loads(selected_cost_row.to_json())
+            else:
+                bt_metrics = {}
+
             bt_metrics["selected_model"] = selected_model_name
-            returns.to_csv(self.outputs / "long_short_returns.csv")
+            bt_metrics["rebalance_frequency"] = cfg["research"].get(
+                "rebalance_frequency"
+            )
+            bt_metrics["cost_bps_grid"] = [float(x) for x in cost_grid]
+            bt_metrics[
+                "note"
+            ] = "Cost-sensitive portfolio diagnostics are written to outputs/transaction_cost_sensitivity.csv."
         else:
+            cost_summary = pd.DataFrame()
             bt_metrics = {
                 "selected_model": selected_model_name,
                 "note": "Backtest disabled for this configuration. Set research.run_backtest: true to enable portfolio diagnostics.",
             }
-
         summary_payload = {
             "data_mode": data_mode,
             "data_quality": dq,
@@ -247,6 +284,7 @@ class ResearchWorkflow:
                 "metrics": feature_family_walk_forward.to_dict(orient="records"),
             },
             "backtest": bt_metrics,
+            "transaction_cost_sensitivity": cost_summary.to_dict(orient="records"),
         }
         (self.outputs / "workflow_summary.json").write_text(json.dumps(summary_payload, indent=2))
 
@@ -266,5 +304,6 @@ class ResearchWorkflow:
             walk_forward_summary,
             feature_family_walk_forward,
             feature_family_walk_forward_summary,
+            cost_sensitivity=cost_summary,
         )
         return WorkflowResult(model_summaries, bt_metrics, str(report_path), data_mode)

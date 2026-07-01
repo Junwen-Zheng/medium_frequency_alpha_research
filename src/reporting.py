@@ -24,6 +24,7 @@ def write_report(
     walk_forward_summary: pd.DataFrame | None = None,
     feature_family_walk_forward: pd.DataFrame | None = None,
     feature_family_walk_forward_summary: pd.DataFrame | None = None,
+    cost_sensitivity: pd.DataFrame | None = None,
 ) -> None:
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -93,6 +94,15 @@ def write_report(
         "## Signal decay",
         "",
         decay_table.to_markdown(index=False) if not decay_table.empty else "Signal decay was disabled for this configuration. Set `research.run_signal_decay: true` in the config to run it.",
+        "",
+        "## Transaction-cost sensitivity",
+        "",
+        "This table runs the same selected long/short portfolio under multiple transaction-cost assumptions. The key research question is whether weak rank-IC survives realistic turnover and cost drag.",
+        "",
+        _markdown_table_or_note(
+            cost_sensitivity,
+            "Transaction-cost sensitivity was not generated.",
+        ),
         "",
         "## Market-neutral backtest",
         "",

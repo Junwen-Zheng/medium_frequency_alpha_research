@@ -11,9 +11,10 @@ research:
   long_quantile: 0.80
   short_quantile: 0.20
   transaction_cost_bps: 5
+  transaction_cost_bps_grid: [0, 5, 10, 25]
   random_seed: 42
   run_signal_decay: false
-  run_backtest: false
+  run_backtest: true
   run_walk_forward: true
   walk_forward_fold_months: 6
   walk_forward_min_train_rows: 500
