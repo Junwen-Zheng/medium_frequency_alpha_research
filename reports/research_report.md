@@ -205,3 +205,13 @@ The results are mixed:
 This suggests that volatility-adjusted price-action features may be a better research direction than raw price/volume features, but the evidence is still not robust enough to claim a stable alpha signal. The main value of this stage is that it separates hypothesis-family behavior from model-selection behavior and shows that the instability exists even in transparent, equal-weight signals.
 
 Next research steps should focus on improving the feature hypothesis, testing cost-aware portfolio behavior, and checking whether the signal survives broader universe and regime stress tests before adding more complex models.
+
+## Stage 6: Cost-aware backtest diagnostics
+
+Stage 6 adds transaction-cost-aware portfolio diagnostics before introducing any additional model complexity. The goal is to test whether the weak cross-sectional signal observed in validation and walk-forward diagnostics can survive realistic trading costs.
+
+The workflow now runs the selected market-neutral long/short portfolio across a transaction-cost grid of 0, 5, 10, and 25 basis points. It writes the daily cost-sensitive return series to `outputs/cost_sensitive_long_short_returns.csv` and the summary table to `outputs/transaction_cost_sensitivity.csv`.
+
+On the real public OHLCV run, the selected model was `random_forest` with weekly Friday rebalancing. The zero-cost version produced a positive but modest Sharpe of roughly 0.35. At 5 bps, the result remained positive but weakened materially. At 10 bps, the edge was nearly erased. At 25 bps, the strategy became negative after costs.
+
+This is an important robustness finding: the current signal is highly sensitive to turnover and execution costs. The evidence does not yet support adding more model complexity. The next research priority should be improving signal quality, reducing turnover, or testing whether the edge is concentrated in a lower-cost/slower-rebalance configuration.
