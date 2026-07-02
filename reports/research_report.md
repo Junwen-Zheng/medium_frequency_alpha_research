@@ -215,3 +215,12 @@ The workflow now runs the selected market-neutral long/short portfolio across a 
 On the real public OHLCV run, the selected model was `random_forest` with weekly Friday rebalancing. The zero-cost version produced a positive but modest Sharpe of roughly 0.35. At 5 bps, the result remained positive but weakened materially. At 10 bps, the edge was nearly erased. At 25 bps, the strategy became negative after costs.
 
 This is an important robustness finding: the current signal is highly sensitive to turnover and execution costs. The evidence does not yet support adding more model complexity. The next research priority should be improving signal quality, reducing turnover, or testing whether the edge is concentrated in a lower-cost/slower-rebalance configuration.
+
+
+## Stage 7A: Rebalance Frequency and Turnover Reduction
+
+Stage 6 showed that the selected signal is materially sensitive to transaction costs. Stage 7A therefore does not add a new model. It keeps the existing selected signal fixed and tests whether slower implementation schedules reduce turnover enough to improve after-cost results.
+
+The workflow now compares daily, weekly, biweekly, and monthly rebalancing across the same transaction-cost grid of 0, 5, 10, and 25 basis points. It writes the diagnostic table to `outputs/rebalance_frequency_sensitivity.csv`.
+
+The key research question is whether the alpha is mainly failing because the signal is weak, or because the daily/weekly implementation trades too much. If slower rebalancing improves net Sharpe at realistic costs, the next step should focus on implementation discipline and turnover control. If slower rebalancing still fails at 10 basis points or worse, the next priority should be signal-quality improvement before adding model complexity.

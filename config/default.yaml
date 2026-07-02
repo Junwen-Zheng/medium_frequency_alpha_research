@@ -8,6 +8,7 @@ research:
   validation_start: "2022-01-01"
   test_start: "2024-01-01"
   rebalance_frequency: "W-FRI"
+  rebalance_frequency_grid: [daily, weekly, biweekly, monthly]
   long_quantile: 0.80
   short_quantile: 0.20
   transaction_cost_bps: 5
