@@ -13,7 +13,7 @@ from .features import build_features, feature_columns, feature_family_columns, c
 from .models import fit_ridge, fit_random_forest, fit_pytorch_mlp
 from .evaluation import daily_rank_ic, summarize_ic, signal_decay, compare_feature_families, regime_sliced_rank_ic
 from .walk_forward import run_walk_forward_validation, summarize_walk_forward_results, run_feature_family_walk_forward, summarize_feature_family_walk_forward_results
-from .backtest import backtest_cost_sensitivity
+from .backtest import backtest_cost_sensitivity, backtest_rebalance_frequency_sensitivity
 from .reporting import write_report
 
 
@@ -237,6 +237,25 @@ class ResearchWorkflow:
                     index=False,
                 )
 
+            rebalance_grid = cfg["research"].get(
+                "rebalance_frequency_grid",
+                ["daily", "weekly", "biweekly", "monthly"],
+            )
+            rebalance_summary = backtest_rebalance_frequency_sensitivity(
+                best_score,
+                ohlcv,
+                long_q=cfg["research"].get("long_quantile", 0.8),
+                short_q=cfg["research"].get("short_quantile", 0.2),
+                cost_bps_grid=cost_grid,
+                rebalance_frequencies=rebalance_grid,
+            )
+
+            if not rebalance_summary.empty:
+                rebalance_summary.to_csv(
+                    self.outputs / "rebalance_frequency_sensitivity.csv",
+                    index=False,
+                )
+
             base_cost_bps = float(cfg["research"].get("transaction_cost_bps", 5))
 
             if not cost_summary.empty:
@@ -260,9 +279,10 @@ class ResearchWorkflow:
             bt_metrics["cost_bps_grid"] = [float(x) for x in cost_grid]
             bt_metrics[
                 "note"
-            ] = "Cost-sensitive portfolio diagnostics are written to outputs/transaction_cost_sensitivity.csv."
+            ] = "Cost-sensitive portfolio diagnostics are written to outputs/transaction_cost_sensitivity.csv. Rebalance-frequency diagnostics are written to outputs/rebalance_frequency_sensitivity.csv."
         else:
             cost_summary = pd.DataFrame()
+            rebalance_summary = pd.DataFrame()
             bt_metrics = {
                 "selected_model": selected_model_name,
                 "note": "Backtest disabled for this configuration. Set research.run_backtest: true to enable portfolio diagnostics.",
@@ -285,6 +305,7 @@ class ResearchWorkflow:
             },
             "backtest": bt_metrics,
             "transaction_cost_sensitivity": cost_summary.to_dict(orient="records"),
+            "rebalance_frequency_sensitivity": rebalance_summary.to_dict(orient="records"),
         }
         (self.outputs / "workflow_summary.json").write_text(json.dumps(summary_payload, indent=2))
 
@@ -305,5 +326,6 @@ class ResearchWorkflow:
             feature_family_walk_forward,
             feature_family_walk_forward_summary,
             cost_sensitivity=cost_summary,
+            rebalance_frequency_sensitivity=rebalance_summary,
         )
         return WorkflowResult(model_summaries, bt_metrics, str(report_path), data_mode)

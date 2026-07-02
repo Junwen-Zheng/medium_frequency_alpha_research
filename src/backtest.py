@@ -4,6 +4,54 @@ import numpy as np
 import pandas as pd
 
 
+REBALANCE_FREQUENCY_ALIASES = {
+    "daily": None,
+    "d": None,
+    "weekly": "W-FRI",
+    "w": "W-FRI",
+    "w-fri": "W-FRI",
+    "biweekly": "2W-FRI",
+    "2w": "2W-FRI",
+    "2w-fri": "2W-FRI",
+    "monthly": "ME",
+    "m": "ME",
+    "me": "ME",
+}
+
+
+def _normalize_rebalance_frequency_label(
+    rebalance_frequency: str | None,
+) -> tuple[str, str | None]:
+    """Normalize user-facing rebalance labels to pandas frequencies.
+
+    The Stage 7A sensitivity table uses stable research labels instead of
+    leaking pandas offset strings into the report.
+    """
+    if rebalance_frequency is None:
+        return "daily", None
+
+    key = str(rebalance_frequency).strip().lower()
+    if not key:
+        return "daily", None
+
+    if key not in REBALANCE_FREQUENCY_ALIASES:
+        valid = ", ".join(["daily", "weekly", "biweekly", "monthly"])
+        raise ValueError(
+            f"Unsupported rebalance_frequency={rebalance_frequency!r}. "
+            f"Use one of: {valid}."
+        )
+
+    return key if key in {"daily", "weekly", "biweekly", "monthly"} else {
+        "d": "daily",
+        "w": "weekly",
+        "w-fri": "weekly",
+        "2w": "biweekly",
+        "2w-fri": "biweekly",
+        "m": "monthly",
+        "me": "monthly",
+    }[key], REBALANCE_FREQUENCY_ALIASES[key]
+
+
 def forward_returns_by_ticker(
     ohlcv: pd.DataFrame,
     horizon_days: int = 1,
@@ -81,6 +129,24 @@ def _period_end_rebalance_dates(
     )
 
     return pd.DatetimeIndex(period_end_dates.to_list(), name="date")
+
+
+def _rebalance_date_count(
+    scores: pd.Series,
+    rebalance_frequency: str | None,
+) -> int:
+    if scores.empty:
+        return 0
+
+    dates = pd.DatetimeIndex(
+        sorted(pd.unique(scores.index.get_level_values("date"))),
+        name="date",
+    )
+
+    if not rebalance_frequency:
+        return len(dates)
+
+    return len(_period_end_rebalance_dates(dates, rebalance_frequency))
 
 
 def make_market_neutral_weights(
@@ -271,6 +337,83 @@ def backtest_cost_sensitivity(
     )
 
     return daily_by_cost, summary
+
+
+def backtest_rebalance_frequency_sensitivity(
+    scores: pd.Series,
+    ohlcv: pd.DataFrame,
+    long_q: float,
+    short_q: float,
+    cost_bps_grid: list[float] | tuple[float, ...],
+    rebalance_frequencies: list[str] | tuple[str, ...] = (
+        "daily",
+        "weekly",
+        "biweekly",
+        "monthly",
+    ),
+) -> pd.DataFrame:
+    """Compare turnover/cost behavior across slower rebalance schedules."""
+    summary_frames = []
+
+    for raw_frequency in rebalance_frequencies:
+        label, pandas_frequency = _normalize_rebalance_frequency_label(raw_frequency)
+        _, summary = backtest_cost_sensitivity(
+            scores,
+            ohlcv,
+            long_q=long_q,
+            short_q=short_q,
+            cost_bps_grid=cost_bps_grid,
+            rebalance_frequency=pandas_frequency,
+        )
+
+        if summary.empty:
+            continue
+
+        summary = summary.copy()
+        summary.insert(0, "rebalance_frequency", label)
+
+        zero_cost_idx = summary["cost_bps"].astype(float).abs().idxmin()
+        gross_annual_return = float(summary.loc[zero_cost_idx, "annualized_return"])
+        gross_sharpe = float(summary.loc[zero_cost_idx, "sharpe"])
+
+        summary["gross_annual_return"] = gross_annual_return
+        summary["net_annual_return"] = summary["annualized_return"]
+        summary["gross_sharpe"] = gross_sharpe
+        summary["net_sharpe"] = summary["sharpe"]
+        summary["cost_drag"] = summary.get("total_cost_drag", 0.0)
+        summary["num_rebalance_dates"] = _rebalance_date_count(
+            scores,
+            pandas_frequency,
+        )
+
+        summary_frames.append(summary)
+
+    if not summary_frames:
+        return pd.DataFrame()
+
+    result = pd.concat(summary_frames, ignore_index=True)
+
+    preferred_columns = [
+        "rebalance_frequency",
+        "cost_bps",
+        "gross_annual_return",
+        "net_annual_return",
+        "gross_sharpe",
+        "net_sharpe",
+        "annualized_volatility",
+        "max_drawdown",
+        "hit_rate",
+        "average_daily_turnover",
+        "average_daily_gross_return",
+        "average_daily_net_return",
+        "average_daily_cost",
+        "total_cost_drag",
+        "cost_drag",
+        "num_rebalance_dates",
+    ]
+    remaining_columns = [c for c in result.columns if c not in preferred_columns]
+
+    return result[preferred_columns + remaining_columns]
 
 
 def backtest_long_short(

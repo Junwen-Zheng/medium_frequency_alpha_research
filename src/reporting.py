@@ -25,6 +25,7 @@ def write_report(
     feature_family_walk_forward: pd.DataFrame | None = None,
     feature_family_walk_forward_summary: pd.DataFrame | None = None,
     cost_sensitivity: pd.DataFrame | None = None,
+    rebalance_frequency_sensitivity: pd.DataFrame | None = None,
 ) -> None:
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -102,6 +103,15 @@ def write_report(
         _markdown_table_or_note(
             cost_sensitivity,
             "Transaction-cost sensitivity was not generated.",
+        ),
+        "",
+        "## Rebalance-frequency sensitivity",
+        "",
+        "This table tests whether the same selected signal improves after costs when it trades less frequently. The purpose is to separate signal weakness from turnover/cost drag.",
+        "",
+        _markdown_table_or_note(
+            rebalance_frequency_sensitivity,
+            "Rebalance-frequency sensitivity was not generated.",
         ),
         "",
         "## Market-neutral backtest",
